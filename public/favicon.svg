@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- Dark background with rounded corners -->
+  <rect width="32" height="32" rx="8" fill="#111f0a"/>
+  <!-- Outer ring -->
+  <circle cx="16" cy="16" r="11" fill="none" stroke="#39FF14" stroke-width="1" opacity="0.3"/>
+  <!-- Inner dot -->
+  <circle cx="16" cy="16" r="5" fill="#39FF14"/>
+</svg>
