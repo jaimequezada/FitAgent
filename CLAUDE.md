@@ -36,10 +36,12 @@ and feels like a conversation not a form.
 
 ### Completed Migrations
 - `001` — baseline schema (users, sessions, etc.)
-- `002` — daily_threads table
+- `002` — daily_threads table + profiles.last_chat_date
 - `003` — sessions: added `missed`, `flagged`,
   `additional_activities` (jsonb), `workout_name`
 - `004` — profiles: added `name` column (text)
+- `005` — profiles: added `trial_started_at` (timestamptz)
+  for the 15-day free trial gate
 
 ## What To Never Do
 - Never hardcode fitness logic or rules
