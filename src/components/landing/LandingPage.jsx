@@ -499,7 +499,7 @@ export default function LandingPage() {
             </h2>
             <div className="landing-pricing-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12, alignItems: 'stretch', maxWidth: 720, margin: '0 auto' }}>
               {[
-                { tier: 'FREE TRIAL', price: 'Free', cadenceNode: <span>15 days free</span>, items: ['Full feature access', 'Personalized workout program', 'Session logging & memory', 'No credit card required'], btnLabel: 'Start for free', btnStyle: 'ghost', featured: false },
+                { tier: 'FREE TRIAL', price: 'Free', cadenceNode: <span>7 days free</span>, items: ['Full feature access', 'Personalized workout program', 'Session logging & memory', 'No credit card required'], btnLabel: 'Start for free', btnStyle: 'ghost', featured: false },
                 { tier: 'MEMBER', price: '$15', cadenceNode: <span>per month</span>, items: ['Always knows your training data', 'Training history that compounds over time', 'Guidance when you need it most', 'Just ask — your coach handles the rest'], btnLabel: 'Coming Soon', btnStyle: 'filled', featured: true },
               ].map((plan) => (
                 <motion.div key={plan.tier} whileHover={{ y: -3 }}

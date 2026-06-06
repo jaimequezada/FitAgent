@@ -46,7 +46,7 @@ function AppRoutes() {
         const trialStart = data?.trial_started_at
         if (trialStart) {
           const daysSinceStart = (Date.now() - new Date(trialStart).getTime()) / (1000 * 60 * 60 * 24)
-          setTrialExpired(daysSinceStart > 15)
+          setTrialExpired(daysSinceStart > 7)
         }
       })
   }, [user])

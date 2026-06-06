@@ -19,43 +19,14 @@ import {
   ACTIVITY_ACK_PROMPT,
 } from './prompts'
 
-// Returns true if the error was thrown by checkUsageLimit.
+// Returns true if the request was rejected by the server's daily cap (HTTP 429).
+// The server's error message contains "daily limit"; surfaced via callApi.
 export function isRateLimitError(err) {
   return Boolean(err?.message?.includes('daily limit'))
 }
 
-// ─── Daily usage limits ───────────────────────────────────────────────────────
-const DAILY_LIMIT_HAIKU  = 30
-const DAILY_LIMIT_SONNET = 5
-
-// Throws if the user has exceeded their daily limit for the given model family.
-// Fails open (no-op) if the Supabase query errors — never block on infra failure.
-async function checkUsageLimit(userId, model) {
-  if (!userId) return
-  const isHaiku = model.includes('haiku')
-  const limit   = isHaiku ? DAILY_LIMIT_HAIKU : DAILY_LIMIT_SONNET
-  const family  = isHaiku ? 'haiku' : 'sonnet'
-
-  const midnight = new Date()
-  midnight.setHours(0, 0, 0, 0)
-
-  const { count, error } = await supabase
-    .from('interactions')
-    .select('*', { count: 'exact', head: true })
-    .eq('user_id', userId)
-    .ilike('model_used', `%${family}%`)
-    .gte('created_at', midnight.toISOString())
-
-  if (error) return // fail open
-
-  if (count >= limit) {
-    throw new Error(
-      isHaiku
-        ? `You've reached your daily limit of ${DAILY_LIMIT_HAIKU} requests. Resets at midnight.`
-        : `You've reached your daily limit of ${DAILY_LIMIT_SONNET} complex requests (program updates, analysis). Resets at midnight.`
-    )
-  }
-}
+// Daily usage limits, authentication, and interaction logging are all enforced
+// server-side in api/chat.js — the browser cannot be trusted to gate cost.
 
 // callClaude(message, userId, type, history, onChunk, onProgramSaved)
 // The main entry point for all Home-mode agent interactions.
@@ -75,10 +46,8 @@ export async function callClaude(message, userId, type = 'chat', history = [], o
     { role: 'user', content: message },
   ]
 
-  await checkUsageLimit(userId, model)
-  const { content, tokens } = await callApi({ messages, system, model, onChunk })
+  const { content } = await callApi({ messages, system, model, onChunk })
 
-  logInteraction(userId, model, tokens)
 
   return extractAndSaveProgram(content, userId, onProgramSaved)
 }
@@ -99,14 +68,12 @@ export async function callGreeting(userId, { missed = false, workoutName = null,
 
   const system = buildSystemPrompt(brief, GREETING_PROMPT + '\n\n' + greetingContext)
 
-  await checkUsageLimit(userId, model)
-  const { content, tokens } = await callApi({
+  const { content } = await callApi({
     messages: [{ role: 'user', content: 'Generate my greeting.' }],
     system,
     model,
   })
 
-  logInteraction(userId, model, tokens)
 
   return content
 }
@@ -118,14 +85,12 @@ export async function callWelcome(userId) {
   const system = buildSystemPrompt(brief, NEW_USER_WELCOME_PROMPT)
   const model  = routeModel('chat')
 
-  await checkUsageLimit(userId, model)
-  const { content, tokens } = await callApi({
+  const { content } = await callApi({
     messages: [{ role: 'user', content: 'Generate my welcome message.' }],
     system,
     model,
   })
 
-  logInteraction(userId, model, tokens)
   return content
 }
 
@@ -136,14 +101,12 @@ export async function callInsight(userId) {
   const system = buildSystemPrompt(brief, INSIGHT_PROMPT)
   const model  = routeModel('insight')
 
-  await checkUsageLimit(userId, model)
-  const { content, tokens } = await callApi({
+  const { content } = await callApi({
     messages: [{ role: 'user', content: 'Generate my training insight.' }],
     system,
     model,
   })
 
-  logInteraction(userId, model, tokens)
   return content
 }
 
@@ -156,14 +119,12 @@ export async function callTrainingBalance(userId, categories) {
   const system = buildSystemPrompt(brief, buildTrainingBalancePrompt(categories))
   const model  = routeModel('chat')
 
-  await checkUsageLimit(userId, model)
-  const { content, tokens } = await callApi({
+  const { content } = await callApi({
     messages: [{ role: 'user', content: 'Generate my training balance assessment.' }],
     system,
     model,
   })
 
-  logInteraction(userId, model, tokens)
 
   const match = content.match(/<balance_json>([\s\S]*?)<\/balance_json>/)
   if (!match) return null
@@ -182,14 +143,12 @@ export async function callFeedback(userId, summary) {
   const system = buildSystemPrompt(brief, SESSION_FEEDBACK_PROMPT)
   const model  = routeModel('feedback')
 
-  await checkUsageLimit(userId, model)
-  const { content, tokens } = await callApi({
+  const { content } = await callApi({
     messages: [{ role: 'user', content: summary }],
     system,
     model,
   })
 
-  logInteraction(userId, model, tokens)
 
   return content
 }
@@ -201,14 +160,12 @@ export async function callRestDaySuggestion(userId) {
   const system = buildSystemPrompt(brief, REST_DAY_PROMPT)
   const model  = routeModel('chat')
 
-  await checkUsageLimit(userId, model)
-  const { content, tokens } = await callApi({
+  const { content } = await callApi({
     messages: [{ role: 'user', content: 'Generate my rest day suggestion.' }],
     system,
     model,
   })
 
-  logInteraction(userId, model, tokens)
   return content
 }
 
@@ -227,14 +184,12 @@ export async function callCompletedFeedback(userId, exercises = []) {
       }).join('; ')
     : 'Session completed (no exercise details available)'
 
-  await checkUsageLimit(userId, model)
-  const { content, tokens } = await callApi({
+  const { content } = await callApi({
     messages: [{ role: 'user', content: `Today's session: ${sessionSummary}` }],
     system,
     model,
   })
 
-  logInteraction(userId, model, tokens)
   return content
 }
 
@@ -249,14 +204,12 @@ export async function callActivityAck(userId, activityType, durationMinutes = nu
   if (durationMinutes) parts.push(`duration=${durationMinutes}min`)
   if (notes) parts.push(`notes="${notes}"`)
 
-  await checkUsageLimit(userId, model)
-  const { content, tokens } = await callApi({
+  const { content } = await callApi({
     messages: [{ role: 'user', content: parts.join(', ') }],
     system,
     model,
   })
 
-  logInteraction(userId, model, tokens)
   return content
 }
 
@@ -270,14 +223,12 @@ export async function callGenerateProgram(userId) {
   const system = buildSystemPrompt(brief, PROGRAM_GENERATION_PROMPT)
   const model  = routeModel('program')
 
-  await checkUsageLimit(userId, model)
-  const { content, tokens } = await callApi({
+  const { content } = await callApi({
     messages: [{ role: 'user', content: 'Generate my complete training program based on my profile. Output the full program in <program_json> tags.' }],
     system,
     model,
+    maxTokens: 8192, // full weekly program JSON can exceed the 4096 default and get truncated
   })
-
-  logInteraction(userId, model, tokens)
 
   const match = content.match(/<program_json>([\s\S]*?)<\/program_json>/)
   if (!match) {
@@ -323,18 +274,27 @@ export function routeModel(type) {
   return sonnetTypes.includes(type) ? 'claude-sonnet-4-6' : 'claude-haiku-4-5-20251001'
 }
 
-// callApi({ messages, system, model, onChunk })
+// callApi({ messages, system, model, maxTokens, onChunk })
 // Reads SSE stream from /api/chat. Calls onChunk with each text delta.
 // Returns { content, tokens } when the stream ends.
-async function callApi({ messages, system, model, onChunk }) {
+// Sends the user's Supabase access token so the server can authenticate the
+// caller and enforce the daily caps (the server is the single source of truth).
+async function callApi({ messages, system, model, maxTokens, onChunk }) {
   const payload = messages.length === 0
     ? [{ role: 'user', content: 'Begin.' }]
     : messages
 
+  const { data: { session } } = await supabase.auth.getSession()
+  const accessToken = session?.access_token
+  if (!accessToken) throw new Error('Not signed in')
+
   const res = await fetch('/api/chat', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages: payload, system, model }),
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ messages: payload, system, model, maxTokens }),
   })
 
   if (!res.ok) {
@@ -404,14 +364,4 @@ async function extractAndSaveProgram(content, userId, onProgramSaved = null) {
   }
 
   return content.replace(/<program_json>[\s\S]*?<\/program_json>/, '').trim()
-}
-
-// logInteraction — writes token usage to the interactions table (fire-and-forget)
-function logInteraction(userId, model, tokens) {
-  if (!userId) return
-  supabase.from('interactions').insert({
-    user_id: userId,
-    model_used: model,
-    tokens_used: tokens ?? 0,
-  }).then(() => {})
 }

@@ -16,7 +16,7 @@ export default function TrialExpired() {
         FREE TRIAL ENDED
       </p>
       <h1 style={{ fontSize: 'clamp(28px, 4vw, 44px)', fontWeight: 300, letterSpacing: '-0.02em', color: 'var(--text-primary)', marginBottom: 16, lineHeight: 1.2 }}>
-        Your 15 days are up.
+        Your 7 days are up.
       </h1>
       <p style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 300, maxWidth: 340, marginBottom: 48, lineHeight: 1.6 }}>
         Membership is coming soon. Check back shortly to continue your training.
