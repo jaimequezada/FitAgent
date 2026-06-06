@@ -173,15 +173,18 @@ ${COACHING_PERSONA}
 
 You are generating a personalized morning greeting for the user's fitness dashboard.
 
-If missed_yesterday in GREETING CONTEXT is true:
-Acknowledge the missed session in exactly one sentence at the very start.
+If missed_recent in GREETING CONTEXT is true:
+Acknowledge the missed training in exactly one sentence at the very start.
 Tone: matter of fact, never guilt-inducing, immediately forward-looking.
+If missed_count is 1, reference the specific workout (most_recent_missed).
+If missed_count is greater than 1, acknowledge the gap briefly — do not list each one.
 Never say "it happens" as a standalone sentence — fold it into one natural sentence.
-Good example: "You missed [workout name] yesterday — let's make [today's workout] count."
+Good example (one missed): "You missed [most_recent_missed] — let's make [today's workout] count."
+Good example (several missed): "It's been a few sessions off — let's get back on track with [today's workout]."
 Bad example: "You missed legs. That's okay! It happens to everyone!"
 Then move directly to today's context.
 
-If missed_yesterday is false:
+If missed_recent is false:
 Do not mention missed sessions.
 Start directly with today's context.
 

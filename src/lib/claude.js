@@ -55,14 +55,15 @@ export async function callClaude(message, userId, type = 'chat', history = [], o
 // callGreeting(userId, missedContext)
 // Generates a short context-aware greeting for the Home screen.
 // missedContext: { missed: bool, workoutName: string|null, todayWorkoutLabel: string|null }
-export async function callGreeting(userId, { missed = false, workoutName = null, todayWorkoutLabel = null } = {}) {
+export async function callGreeting(userId, { missed = false, missedCount = 0, workoutName = null, todayWorkoutLabel = null } = {}) {
   const brief  = await buildContextBrief(userId)
   const model  = routeModel('chat')
 
   const greetingContext = [
     'GREETING CONTEXT:',
-    `missed_yesterday: ${missed}`,
-    missed && workoutName ? `missed_workout: ${workoutName}` : null,
+    `missed_recent: ${missed}`,
+    missed ? `missed_count: ${missedCount}` : null,
+    missed && workoutName ? `most_recent_missed: ${workoutName}` : null,
     `today_workout: ${todayWorkoutLabel ?? 'today\'s scheduled workout'}`,
   ].filter(Boolean).join('\n')
 

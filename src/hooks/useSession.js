@@ -16,6 +16,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { callFeedback, isRateLimitError } from '../lib/claude'
+import { localDateStr } from '../lib/dates'
 
 function pickDayIndex(sessionCount, days) {
   return sessionCount % days.length
@@ -50,7 +51,7 @@ export function useSession(userId) {
   // start() — fetch program + check today's completion, go to PRE_SESSION or SESSION_COMPLETE
   const start = useCallback(async () => {
     setIsLoading(true)
-    const todayStr = new Date().toISOString().slice(0, 10)
+    const todayStr = localDateStr()
 
     const [memRes, sessionsRes, todayRes] = await Promise.all([
       supabase.from('memory').select('current_program').eq('user_id', userId).maybeSingle(),
@@ -92,8 +93,25 @@ export function useSession(userId) {
     const dayIdx = schedEntry?.day_index ?? pickDayIndex(sessionCount, program.days)
     const day    = program.days[dayIdx]
 
+    // Guard against a malformed program (out-of-range day_index, or a day with
+    // no exercises) — fall back to the "no program yet" preview rather than
+    // crashing the gym screen.
+    if (!day?.exercises?.length) {
+      setExercises([])
+      setDayLabel('Workout')
+      setState('PRE_SESSION')
+      return
+    }
+
     setDayLabel(day.label ?? `Day ${dayIdx + 1}`)
-    setExercises(day.exercises.map(ex => ({ ...ex })))
+    // Normalize each exercise so the set machine can't divide on undefined:
+    // sets must be a positive integer; reps/weight default sensibly.
+    setExercises(day.exercises.map(ex => ({
+      ...ex,
+      sets:       Number.isFinite(+ex.sets) && +ex.sets > 0 ? Math.floor(+ex.sets) : 1,
+      reps:       Number.isFinite(+ex.reps) ? +ex.reps : 8,
+      weight_lbs: Number.isFinite(+ex.weight_lbs) ? +ex.weight_lbs : 0,
+    })))
     setState('PRE_SESSION')
   }, [userId])
 
@@ -117,12 +135,12 @@ export function useSession(userId) {
 
   // logSet — record reps for the current set
   const logSet = useCallback((reps) => {
-    setLoggedSets(prev => {
-      const ex = exercises[exerciseIndex]
-      return [...prev, { name: ex.name, reps, weight_lbs: ex.weight_lbs }]
-    })
+    const ex = exercises[exerciseIndex]
+    if (!ex) return // defensive: nothing to log against
 
-    const isLastSet      = setIndex + 1 >= exercises[exerciseIndex].sets
+    setLoggedSets(prev => [...prev, { name: ex.name, reps, weight_lbs: ex.weight_lbs }])
+
+    const isLastSet      = setIndex + 1 >= ex.sets
     const isLastExercise = exerciseIndex + 1 >= exercises.length
 
     if (isLastSet && isLastExercise) {
@@ -134,7 +152,10 @@ export function useSession(userId) {
 
   // advanceAfterRest — called after rest period ends
   const advanceAfterRest = useCallback(() => {
-    const isLastSet = setIndex + 1 >= exercises[exerciseIndex].sets
+    const ex = exercises[exerciseIndex]
+    if (!ex) { setState('SESSION_COMPLETE'); return } // defensive
+
+    const isLastSet = setIndex + 1 >= ex.sets
 
     if (isLastSet) {
       setExerciseIndex(i => i + 1)
@@ -200,7 +221,7 @@ export function useSession(userId) {
 
       const { error } = await supabase.from('sessions').insert({
         user_id:      userId,
-        date:         new Date().toISOString().slice(0, 10),
+        date:         localDateStr(),
         exercises:    exercisesData,
         completed:    true,
         workout_name: label || null,

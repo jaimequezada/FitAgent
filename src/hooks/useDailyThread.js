@@ -18,10 +18,7 @@ import { supabase } from '../lib/supabase'
 import { callGreeting, callWelcome, isRateLimitError } from '../lib/claude'
 import { detectAndLogMissedSession } from '../lib/missedSessions'
 import { loadTodayThread, upsertThread, clearTodayThread } from '../lib/dailyThread'
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
+import { localDateStr as todayStr } from '../lib/dates'
 
 // options:
 //   sessions       — Session[] | null (wait for this before initialising)
@@ -71,7 +68,9 @@ export function useDailyThread(userId, { sessions = null, postGymFeedback = null
         // included in the greeting context.
         let missedResult = { missed: false }
         try {
-          missedResult = await detectAndLogMissedSession(userId)
+          // Pass last_chat_date so detection covers every scheduled day the
+          // user was away for, not just yesterday.
+          missedResult = await detectAndLogMissedSession(userId, { since: lastChatDate })
         } catch (e) {
           console.error('[useDailyThread] detectAndLogMissedSession:', e)
         }
@@ -87,6 +86,7 @@ export function useDailyThread(userId, { sessions = null, postGymFeedback = null
           greetingText = hasSessions
             ? await callGreeting(userId, {
                 missed:           missedResult.missed,
+                missedCount:      missedResult.count ?? 0,
                 workoutName:      missedResult.workoutName ?? null,
                 todayWorkoutLabel: todayWorkout?.label ?? null,
               })

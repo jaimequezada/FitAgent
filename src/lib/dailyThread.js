@@ -4,10 +4,7 @@
 // Called by useDailyThread — not imported directly by components.
 
 import { supabase } from './supabase'
-
-function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
+import { localDateStr as todayStr } from './dates'
 
 // loadTodayThread(userId) → Message[] | null
 // Returns today's thread or null if none exists yet.
