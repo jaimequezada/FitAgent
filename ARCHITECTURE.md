@@ -236,7 +236,7 @@ src/lib/claude.js  →  POST /api/chat (SSE)  →  Anthropic Messages API
 7. `extractAndSaveProgram` — if the response contains `<program_json>...</program_json>`, parse it, upsert into `memory.current_program`, and strip the tag from the displayed text.
 
 ### Daily rate limits (`claude.js`)
-- Haiku family: **30** requests / user / day
+- Haiku family: **20** requests / user / day
 - Sonnet family: **5** requests / user / day
 - Counted from `interactions.created_at >= local midnight`, filtered by model family.
 - On exceed: throws an error with a user-facing message; UI surfaces it via `isRateLimitError`.
@@ -371,6 +371,7 @@ Send up to 12 recent completed sessions in full detail.
 
 - **Model routing** — Haiku for casual interactions saves ~70% on the most frequent calls.
 - **Prompt caching** — system prompt + profile are the cache-friendly portion.
-- **Daily caps** — 30 Haiku / 5 Sonnet per user per day, enforced in `claude.js`.
+- **Daily caps** — 20 Haiku / 5 Sonnet per user per day, enforced server-side in `api/chat.js`.
+- **Chat history window** — `callClaude` sends only the last 20 thread messages (`MAX_HISTORY_MESSAGES`); older turns drop out, durable facts persist in the memory brief.
 - **Trial gate** — 15 days from first signup; expired users get routed to `/trial-expired`.
 - **Per-call logging** — every interaction writes `model_used` + `tokens_used` to `interactions`.

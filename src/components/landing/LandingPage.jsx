@@ -203,12 +203,12 @@ export default function LandingPage() {
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 48px', height: 64, boxSizing: 'border-box',
+        padding: '0 24px', height: 60, boxSizing: 'border-box',
         borderBottom: '1px solid var(--border)',
         background: 'var(--bg)',
         backdropFilter: 'none',
       }}>
-        <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500, letterSpacing: '0.12em', color: 'var(--text-primary)', textDecoration: 'none' }}>
+        <a href="#" style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 500, letterSpacing: '0.1em', color: 'var(--text-primary)', textDecoration: 'none' }}>
           <PulsingOrb size={24} />
           FITAGENT
         </a>

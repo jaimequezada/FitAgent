@@ -34,16 +34,16 @@ export default function AuthScreen({ initialMode = 'signin' }) {
   }
 
   return (
-    <div className="flex flex-col min-h-dvh" style={{ paddingTop: 64 }}>
+    <div className="flex flex-col min-h-dvh" style={{ paddingTop: 60 }}>
 
       {/* Navbar */}
       <nav style={{
-        position: 'fixed', top: 0, left: 0, right: 0, height: 64,
-        display: 'flex', alignItems: 'center', padding: '0 48px',
+        position: 'fixed', top: 0, left: 0, right: 0, height: 60,
+        display: 'flex', alignItems: 'center', padding: '0 24px',
         borderBottom: '1px solid var(--border)',
         background: 'var(--bg)', zIndex: 100,
       }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 500, letterSpacing: '0.12em', color: 'var(--text-primary)', textDecoration: 'none' }}>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 13, fontWeight: 500, letterSpacing: '0.1em', color: 'var(--text-primary)', textDecoration: 'none' }}>
           <PulsingOrb size={24} />
           FITAGENT
         </Link>

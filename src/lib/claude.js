@@ -28,10 +28,26 @@ export function isRateLimitError(err) {
 // Daily usage limits, authentication, and interaction logging are all enforced
 // server-side in api/chat.js — the browser cannot be trusted to gate cost.
 
+// Sliding window: only the most recent chat turns are sent to the model. Older
+// turns drop out of the transcript — durable facts live in the structured
+// memory brief (buildContextBrief), which is rebuilt and re-sent on every call,
+// so nothing important is lost. This bounds per-call input cost on long
+// single-day conversations.
+const MAX_HISTORY_MESSAGES = 20
+
+// Keep the last `max` messages, then drop any leading assistant turns so the
+// window opens on a user message — the Messages API requires messages[0] to be
+// role 'user' (the daily thread's first message is the assistant greeting).
+function windowHistory(history, max = MAX_HISTORY_MESSAGES) {
+  let win = history.slice(-max)
+  while (win.length && win[0].role !== 'user') win = win.slice(1)
+  return win
+}
+
 // callClaude(message, userId, type, history, onChunk, onProgramSaved)
 // The main entry point for all Home-mode agent interactions.
 //   message        — the user's latest message string
-//   userId         — for fetching context and logging tokens
+//   userId         — for fetching context (auth + logging happen server-side)
 //   type           — 'chat' | 'program' | 'checkin' | 'analysis' | 'feedback'
 //   history        — prior { role, content }[] pairs for this conversation
 //   onChunk        — optional (chunk: string) => void called as tokens stream in
@@ -42,7 +58,7 @@ export async function callClaude(message, userId, type = 'chat', history = [], o
   const system   = buildSystemPrompt(brief)
   const model    = routeModel(type)
   const messages = [
-    ...history.map(({ role, content }) => ({ role, content })),
+    ...windowHistory(history).map(({ role, content }) => ({ role, content })),
     { role: 'user', content: message },
   ]
 

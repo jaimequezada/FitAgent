@@ -22,7 +22,7 @@ const SUPABASE_ANON_KEY =
   process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY
 
 // ─── Daily usage limits (per user, per model family) ─────────────────────────
-const DAILY_LIMIT_HAIKU  = 30
+const DAILY_LIMIT_HAIKU  = 20
 const DAILY_LIMIT_SONNET = 5
 
 // Hard ceiling on output tokens we'll ever allow a caller to request.

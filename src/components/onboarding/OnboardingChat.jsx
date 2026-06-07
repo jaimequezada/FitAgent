@@ -246,7 +246,7 @@ export default function OnboardingChat({ onComplete }) {
         {/* NAV */}
         <nav style={{
           position: 'fixed', top: 0, left: 0, right: 0, height: 60,
-          display: 'flex', alignItems: 'center', padding: '0 32px',
+          display: 'flex', alignItems: 'center', padding: '0 24px',
           borderBottom: '1px solid var(--border)',
           background: 'var(--bg)', zIndex: 100,
         }}>
