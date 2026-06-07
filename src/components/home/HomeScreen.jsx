@@ -15,6 +15,7 @@ import {
   isRateLimitError,
 } from '../../lib/claude'
 import { useDailyThread }     from '../../hooks/useDailyThread'
+import { localDateStr }       from '../../lib/dates'
 import PulsingOrb             from '../ui/PulsingOrb'
 import NavSidebar             from '../ui/NavSidebar'
 
@@ -69,21 +70,16 @@ function getWorkoutDisplayName(label = '') {
 }
 
 // Build week dots array for Mon–Sun from sessions + program schedule
-function toLocalDateStr(d) {
-  const pad = n => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
-}
-
 function buildWeekDots(sessions, program) {
   const today  = new Date()
-  const todayStr = toLocalDateStr(today)
+  const todayStr = localDateStr(today)
   const dow    = today.getDay() // 0=Sun
   // Build Mon–Sun dates for current week
   const mondayOffset = dow === 0 ? -6 : 1 - dow
   const days = Array.from({ length: 7 }, (_, i) => {
     const d = new Date(today)
     d.setDate(today.getDate() + mondayOffset + i)
-    return toLocalDateStr(d)
+    return localDateStr(d)
   })
   // Map day-of-week labels: Mon=1,Tue=2,Wed=3,Thu=4,Fri=5,Sat=6,Sun=0
   const DOW_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S']
@@ -97,9 +93,13 @@ function buildWeekDots(sessions, program) {
     const s = sessionMap[dateStr]
     const isToday = dateStr === todayStr
 
-    // Determine if this day is a training day per schedule
+    // Determine if this day is a training day.
+    // Schedule-based programs: use the schedule. Schedule-less ("old rotation")
+    // programs have no rest days — getTodayWorkout rotates through days by count,
+    // so every day is a training day. Mirror that here or the dots disagree with
+    // the Today card (which would show a workout while dots show none).
     const dow = new Date(dateStr + 'T12:00:00').getDay()
-    const isTrainingDay = program?.schedule ? !!program.schedule[dow] : false
+    const isTrainingDay = program?.schedule ? !!program.schedule[dow] : !!program?.days?.length
 
     let type
     if (s?.completed)        type = 'done'
@@ -214,14 +214,16 @@ function extractCategory(label = '') {
   return label.split('—').pop().trim()
 }
 
-// getWeekStart — returns the ISO date string (YYYY-MM-DD) of the most recent Monday
+// getWeekStart — returns the local date string (YYYY-MM-DD) of the most recent Monday.
+// Local, not UTC: session dates are stored in local time (see lib/dates.js), so the
+// week boundary must use the same calendar or the Mon cutoff is off by a day in the evening.
 function getWeekStart() {
   const now = new Date()
   const day = now.getDay() // 0=Sun, 1=Mon ... 6=Sat
   const diff = day === 0 ? -6 : 1 - day
   const monday = new Date(now)
   monday.setDate(now.getDate() + diff)
-  return monday.toISOString().slice(0, 10)
+  return localDateStr(monday)
 }
 
 // computeWeeklyBalance — calculates planned vs actual reps per category for the current calendar week.
@@ -233,13 +235,23 @@ function computeWeeklyBalance(program, sessions) {
 
   const weekStart = getWeekStart()
 
-  // Build category map preserving first-appearance order, summing planned reps across all matching days
+  // Weekly training frequency per day index, from the schedule. Actual reps below
+  // are summed across EVERY session in the week, so planned must also be the WEEKLY
+  // total — a day trained twice a week needs 2× its per-session volume, or the bar
+  // tops out at ~50% even when the user is perfectly on track.
+  // Schedule-less ("old rotation") programs: assume each day type once per week.
+  const weeklyFreq = idx => program.schedule
+    ? Object.values(program.schedule).filter(v => v?.day_index === idx).length
+    : 1
+
+  // Build category map preserving first-appearance order, summing planned weekly reps across all matching days
   const order = []
   const map = {}
-  program.days.forEach(day => {
+  program.days.forEach((day, idx) => {
     const category = extractCategory(day.label)
     if (!category) return
-    const plannedReps = (day.exercises ?? []).reduce((sum, ex) => sum + (ex.sets ?? 0) * (ex.reps ?? 0), 0)
+    const perSession = (day.exercises ?? []).reduce((sum, ex) => sum + (ex.sets ?? 0) * (ex.reps ?? 0), 0)
+    const plannedReps = perSession * weeklyFreq(idx)
     if (!map[category]) {
       order.push(category)
       map[category] = { label: category, plannedReps: 0, actualReps: 0 }
@@ -299,7 +311,7 @@ export default function HomeScreen({ onStartGym, postGymFeedback }) {
 
   // ── Derived ──────────────────────────────────────────────────────────────
 
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const todayStr = useMemo(() => localDateStr(), [])
 
   const completedSessions = useMemo(
     () => (sessions ?? []).filter(s => s.completed),

@@ -7,6 +7,7 @@ import { supabase } from './supabase'
 import { buildContextBrief } from './memory'
 import {
   buildSystemPrompt,
+  buildCardSystemPrompt,
   ONBOARDING_PROMPT,
   GREETING_PROMPT,
   SESSION_FEEDBACK_PROMPT,
@@ -83,7 +84,7 @@ export async function callGreeting(userId, { missed = false, missedCount = 0, wo
     `today_workout: ${todayWorkoutLabel ?? 'today\'s scheduled workout'}`,
   ].filter(Boolean).join('\n')
 
-  const system = buildSystemPrompt(brief, GREETING_PROMPT + '\n\n' + greetingContext)
+  const system = buildCardSystemPrompt(brief, GREETING_PROMPT + '\n\n' + greetingContext)
 
   const { content } = await callApi({
     messages: [{ role: 'user', content: 'Generate my greeting.' }],
@@ -99,7 +100,7 @@ export async function callGreeting(userId, { missed = false, missedCount = 0, wo
 // Generates a personal first-open welcome message for new users (after onboarding).
 export async function callWelcome(userId) {
   const brief  = await buildContextBrief(userId)
-  const system = buildSystemPrompt(brief, NEW_USER_WELCOME_PROMPT)
+  const system = buildCardSystemPrompt(brief, NEW_USER_WELCOME_PROMPT)
   const model  = routeModel('chat')
 
   const { content } = await callApi({
@@ -115,7 +116,7 @@ export async function callWelcome(userId) {
 // Generates a single sharp observation for the returning-user dashboard.
 export async function callInsight(userId) {
   const brief  = await buildContextBrief(userId)
-  const system = buildSystemPrompt(brief, INSIGHT_PROMPT)
+  const system = buildCardSystemPrompt(brief, INSIGHT_PROMPT)
   const model  = routeModel('insight')
 
   const { content } = await callApi({
@@ -133,7 +134,7 @@ export async function callInsight(userId) {
 // Returns parsed categories array or null on failure.
 export async function callTrainingBalance(userId, categories) {
   const brief  = await buildContextBrief(userId)
-  const system = buildSystemPrompt(brief, buildTrainingBalancePrompt(categories))
+  const system = buildCardSystemPrompt(brief, buildTrainingBalancePrompt(categories))
   const model  = routeModel('chat')
 
   const { content } = await callApi({
@@ -157,7 +158,7 @@ export async function callTrainingBalance(userId, categories) {
 // Generates a brief 1-2 sentence reaction after a completed gym session.
 export async function callFeedback(userId, summary) {
   const brief  = await buildContextBrief(userId)
-  const system = buildSystemPrompt(brief, SESSION_FEEDBACK_PROMPT)
+  const system = buildCardSystemPrompt(brief, SESSION_FEEDBACK_PROMPT)
   const model  = routeModel('feedback')
 
   const { content } = await callApi({
@@ -174,7 +175,7 @@ export async function callFeedback(userId, summary) {
 // Generates a one-sentence rest day suggestion for the Today card.
 export async function callRestDaySuggestion(userId) {
   const brief  = await buildContextBrief(userId)
-  const system = buildSystemPrompt(brief, REST_DAY_PROMPT)
+  const system = buildCardSystemPrompt(brief, REST_DAY_PROMPT)
   const model  = routeModel('chat')
 
   const { content } = await callApi({
@@ -191,7 +192,7 @@ export async function callRestDaySuggestion(userId) {
 // exercises: ExerciseLog[] from the completed session
 export async function callCompletedFeedback(userId, exercises = []) {
   const brief  = await buildContextBrief(userId)
-  const system = buildSystemPrompt(brief, COMPLETED_FEEDBACK_PROMPT)
+  const system = buildCardSystemPrompt(brief, COMPLETED_FEEDBACK_PROMPT)
   const model  = routeModel('chat')
 
   const sessionSummary = exercises.length > 0
@@ -214,7 +215,7 @@ export async function callCompletedFeedback(userId, exercises = []) {
 // Generates a one-sentence acknowledgment after logging an additional activity.
 export async function callActivityAck(userId, activityType, durationMinutes = null, notes = '') {
   const brief  = await buildContextBrief(userId)
-  const system = buildSystemPrompt(brief, ACTIVITY_ACK_PROMPT)
+  const system = buildCardSystemPrompt(brief, ACTIVITY_ACK_PROMPT)
   const model  = routeModel('chat')
 
   const parts = [`Activity logged: type=${activityType}`]

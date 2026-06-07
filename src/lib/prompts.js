@@ -148,18 +148,37 @@ Rules:
 - muscle_groups: a short · separated string of the primary muscles trained that day (e.g. "Chest · Shoulders · Triceps", "Quads · Hamstrings · Glutes", "Back · Biceps"). Reflect the actual exercises — don't use a generic label if the day is specialized.
 `.trim()
 
-// buildSystemPrompt — injects the user's context brief into the coaching persona.
-// responseFormat is optional — used for structured outputs (program gen, check-ins).
-export function buildSystemPrompt(brief, responseFormat = '') {
+// currentDateTime — human-readable "now" line shared by every system prompt.
+function currentDateTime() {
   const now = new Date()
   const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
   const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })
-  const currentDateTime = `Today is ${dateStr}. Current time: ${timeStr}.`
+  return `Today is ${dateStr}. Current time: ${timeStr}.`
+}
 
-  const contextSection = brief
-    ? `Here is everything you know about this user:\n\n${brief}`
-    : ''
-  return [COACHING_PERSONA, RESPONSE_FORMAT_INSTRUCTIONS, currentDateTime, PROGRAM_JSON_INSTRUCTIONS, CHART_JSON_INSTRUCTIONS, contextSection, responseFormat].filter(Boolean).join('\n\n')
+// contextSection — wraps the memory brief for prompt injection.
+function contextSection(brief) {
+  return brief ? `Here is everything you know about this user:\n\n${brief}` : ''
+}
+
+// buildSystemPrompt — full coaching system prompt for interactive CHAT and program
+// generation. Includes the markdown response rules plus the program/chart JSON
+// instructions, because chat replies render as markdown and may emit those tags.
+// responseFormat is optional — used for structured outputs (program gen, check-ins).
+export function buildSystemPrompt(brief, responseFormat = '') {
+  return [COACHING_PERSONA, RESPONSE_FORMAT_INSTRUCTIONS, currentDateTime(), PROGRAM_JSON_INSTRUCTIONS, CHART_JSON_INSTRUCTIONS, contextSection(brief), responseFormat].filter(Boolean).join('\n\n')
+}
+
+// buildCardSystemPrompt — minimal system prompt for the single-purpose dashboard
+// cards (insight, welcome, greeting, rest, completed/session feedback, balance,
+// activity ack). These produce ONE short string rendered directly in a UI card, so
+// they deliberately OMIT the chat scaffolding: RESPONSE_FORMAT_INSTRUCTIONS (which
+// demands markdown/tables and contradicts each card's "plain text, one sentence"
+// rule), PROGRAM_JSON_INSTRUCTIONS, and CHART_JSON_INSTRUCTIONS (which would let the
+// model emit <program_json>/<chart_json> tags that surface as raw garbage in a card).
+// Only persona + date + brief + the card's own prompt.
+export function buildCardSystemPrompt(brief, cardPrompt = '') {
+  return [COACHING_PERSONA, currentDateTime(), contextSection(brief), cardPrompt].filter(Boolean).join('\n\n')
 }
 
 // PLAIN_TEXT_RULE — injected into all single-response prompts that render in UI bubbles/cards.
@@ -191,9 +210,12 @@ Start directly with today's context.
 Always:
 Reference the user's name.
 Reference today's specific workout.
-Reference one specific thing from recent session data — a weight hit, a target close, a signal being monitored.
 Maximum 2 sentences total.
-Never generic. Always specific.
+
+Specificity rule:
+Only reference a concrete detail from recent session data — a weight hit, a target close, a signal being monitored — if that detail actually appears in the user's data above.
+If there are fewer than 2 completed sessions, or no concrete detail to cite, do NOT invent one: give a brief, honest, forward-looking line about today's workout instead.
+Never fabricate or approximate a weight, a PR, a streak, or a trend that is not in the data.
 ${PLAIN_TEXT_RULE}
 
 Respond with ONLY the greeting text, nothing else.
