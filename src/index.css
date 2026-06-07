@@ -39,6 +39,19 @@ html, body {
   min-height: 100%;
 }
 
+/* Prevent iOS Safari from auto-zooming when an input is focused.
+   Mobile Safari zooms in on any focused field with font-size < 16px and
+   does not zoom back out, leaving the next screen looking "cut off" until
+   the user pinch-zooms. Forcing 16px on mobile avoids the zoom entirely.
+   Number inputs are excluded so the large gym/log fields keep their size. */
+@media (max-width: 768px) {
+  input:not([type="number"]),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 /* Scrollbar hide utility */
 .scrollbar-none {
   scrollbar-width: none;
