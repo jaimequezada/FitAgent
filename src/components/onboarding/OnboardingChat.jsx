@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { supabase } from '../../lib/supabase'
-import { callOnboarding, callGenerateProgram } from '../../lib/claude'
+import { callOnboarding, callGenerateProgram, isRateLimitError } from '../../lib/claude'
 import { useAuth } from '../../hooks/useAuth'
 import PulsingOrb from '../ui/PulsingOrb'
 import TypingIndicator from '../ui/TypingIndicator'
@@ -77,6 +77,9 @@ export default function OnboardingChat({ onComplete }) {
   const [processingStep, setProcessingStep] = useState(-1)
   const [animationDone, setAnimationDone] = useState(false)
   const [programReady, setProgramReady] = useState(false)
+  const [genFailed, setGenFailed] = useState(false)
+  const [genErrorMsg, setGenErrorMsg] = useState('')
+  const [retryToken, setRetryToken] = useState(0)
   const [collectedFields, setCollectedFields] = useState([])
   const [input, setInput] = useState('')
   const [error, setError] = useState(null)
@@ -107,9 +110,16 @@ export default function OnboardingChat({ onComplete }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Run processing animation + program generation in parallel after isDone
+  // Run processing animation + program generation in parallel after isDone.
+  // Re-runs on retry (retryToken bump).
   useEffect(() => {
     if (!showProcessing) return
+
+    setGenFailed(false)
+    setGenErrorMsg('')
+    setProgramReady(false)
+    setAnimationDone(false)
+    setProcessingStep(-1)
 
     // Animation: step through processing steps
     let i = 0
@@ -124,22 +134,41 @@ export default function OnboardingChat({ onComplete }) {
     }
     setTimeout(run, 400)
 
-    // Program generation: call Sonnet with the user's profile
-    // Hard timeout so a hanging request never blocks navigation
+    // Program generation: Sonnet builds the program from the saved profile.
+    // Hard timeout so a hanging request never blocks navigation.
     const fallback = setTimeout(() => setProgramReady(true), 25000)
     callGenerateProgram(user.id)
-      .catch(err => console.error('[OnboardingChat] program generation failed:', err))
+      .then(program => {
+        // callGenerateProgram returns null on parse/extract/save failure.
+        if (!program) {
+          setGenFailed(true)
+          setGenErrorMsg("We couldn't build your program. Let's try that again.")
+        }
+      })
+      .catch(err => {
+        console.error('[OnboardingChat] program generation failed:', err)
+        setGenFailed(true)
+        setGenErrorMsg(isRateLimitError(err)
+          ? "You've hit today's request limit before your program finished. Try again in a bit."
+          : "We couldn't build your program. Let's try that again.")
+      })
       .finally(() => { clearTimeout(fallback); setProgramReady(true) })
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showProcessing])
+  }, [showProcessing, retryToken])
 
-  // Transition to dashboard once both animation and program generation are done
+  // Transition to dashboard once both animation and program generation are done —
+  // but NOT if generation failed. A failed program would land the user on an empty
+  // dashboard (no workout, no plan); show a retry instead.
   useEffect(() => {
-    if (animationDone && programReady) {
+    if (animationDone && programReady && !genFailed) {
       setTimeout(onComplete, 300)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationDone, programReady])
+  }, [animationDone, programReady, genFailed])
+
+  function retryGeneration() {
+    setRetryToken(t => t + 1)
+  }
 
   async function sendAgentTurn(currentMessages) {
     setIsStreaming(true)
@@ -210,32 +239,53 @@ export default function OnboardingChat({ onComplete }) {
             }}
           >
             <PulsingOrb size={72} borderRadius={22} />
-            <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <p style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Building your program</p>
-              <p style={{ fontSize: 14, fontWeight: 300, color: 'var(--text-muted)' }}>This will just take a moment</p>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
-              {PROCESSING_STEPS.map((step, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={processingStep >= i ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-                  transition={{ duration: 0.4, ease: 'easeOut' }}
+            {genFailed ? (
+              <>
+                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 320 }}>
+                  <p style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Something went wrong</p>
+                  <p style={{ fontSize: 14, fontWeight: 300, color: 'var(--text-muted)', lineHeight: 1.6 }}>{genErrorMsg}</p>
+                </div>
+                <button
+                  onClick={retryGeneration}
                   style={{
-                    fontSize: 13, fontWeight: 300,
-                    color: processingStep > i ? 'var(--text-secondary)' : 'var(--text-muted)',
-                    display: 'flex', alignItems: 'center', gap: 10,
+                    fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500,
+                    background: 'var(--green)', color: '#000', border: 'none', borderRadius: 100,
+                    padding: '12px 32px', cursor: 'pointer', transition: 'opacity 0.2s',
                   }}
-                >
-                  <div style={{
-                    width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
-                    background: processingStep > i ? 'var(--green)' : 'var(--text-muted)',
-                    transition: 'background 0.4s ease',
-                  }} />
-                  {step}
-                </motion.div>
-              ))}
-            </div>
+                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                >Try again</button>
+              </>
+            ) : (
+              <>
+                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <p style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-primary)', letterSpacing: '-0.01em' }}>Building your program</p>
+                  <p style={{ fontSize: 14, fontWeight: 300, color: 'var(--text-muted)' }}>This will just take a moment</p>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: 12 }}>
+                  {PROCESSING_STEPS.map((step, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={processingStep >= i ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+                      transition={{ duration: 0.4, ease: 'easeOut' }}
+                      style={{
+                        fontSize: 13, fontWeight: 300,
+                        color: processingStep > i ? 'var(--text-secondary)' : 'var(--text-muted)',
+                        display: 'flex', alignItems: 'center', gap: 10,
+                      }}
+                    >
+                      <div style={{
+                        width: 5, height: 5, borderRadius: '50%', flexShrink: 0,
+                        background: processingStep > i ? 'var(--green)' : 'var(--text-muted)',
+                        transition: 'background 0.4s ease',
+                      }} />
+                      {step}
+                    </motion.div>
+                  ))}
+                </div>
+              </>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

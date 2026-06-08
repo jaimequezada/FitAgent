@@ -58,12 +58,17 @@ export function buildBrief(profile, memory, sessions) {
   const program = memory.current_program ?? {}
   if (Object.keys(program).length > 0) {
     sections.push([
-      '=== CURRENT PROGRAM ===',
+      '=== CURRENT PROGRAM (PLANNED — not a record of what was done) ===',
+      'This describes the workouts the user is scheduled to do. A day appearing',
+      'here does NOT mean it was completed. Only the RECENT SESSIONS section below',
+      'records actual completed workouts.',
       typeof program === 'string' ? program : JSON.stringify(program, null, 2),
     ].join('\n'))
   }
 
   // --- Recent sessions (last 4 weeks = ~12 sessions max) ---
+  // Always emit this section, even when empty — an explicit "none yet" marker
+  // stops the model from inferring completed workouts from the planned program.
   if (sessions.length > 0) {
     const sessionLines = sessions.map(s => {
       const exercises = (s.exercises ?? []).map(ex => {
@@ -73,7 +78,9 @@ export function buildBrief(profile, memory, sessions) {
       const note = s.notes ? ` — "${s.notes}"` : ''
       return `${s.date}${note}\n${exercises}`
     })
-    sections.push(['=== RECENT SESSIONS ===', ...sessionLines].join('\n'))
+    sections.push(['=== RECENT SESSIONS (actual completed workouts) ===', ...sessionLines].join('\n'))
+  } else {
+    sections.push('=== RECENT SESSIONS (actual completed workouts) ===\nNone yet — the user has not completed any logged workouts. Do not reference past sessions, weights, or PRs as if they happened.')
   }
 
   // --- Memory documents ---

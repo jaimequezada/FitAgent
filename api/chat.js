@@ -37,7 +37,7 @@ export default async function handler(req, res) {
     return jsonError(res, 405, 'Method not allowed')
   }
 
-  const { messages, system, model = 'claude-sonnet-4-6', maxTokens } = req.body || {}
+  const { messages, system, model = 'claude-sonnet-4-6', maxTokens, tzOffsetMinutes } = req.body || {}
 
   if (!messages || !Array.isArray(messages)) {
     return jsonError(res, 400, 'messages array required')
@@ -73,16 +73,24 @@ export default async function handler(req, res) {
   const limit   = isHaiku ? DAILY_LIMIT_HAIKU : DAILY_LIMIT_SONNET
   const family  = isHaiku ? 'haiku' : 'sonnet'
 
-  // Window resets at UTC midnight.
-  const midnight = new Date()
-  midnight.setUTCHours(0, 0, 0, 0)
+  // Window resets at the user's LOCAL midnight (the rest of the app keys dates to
+  // local time — see src/lib/dates.js). The browser sends its UTC offset in
+  // minutes (Date.getTimezoneOffset(): UTC = local + offset). We clamp it to the
+  // real-world range [-840, 840] so a crafted offset can't widen the window far
+  // beyond a day. Missing/invalid offset falls back to UTC midnight.
+  const rawOffset = Number(tzOffsetMinutes)
+  const offsetMin = Number.isFinite(rawOffset) ? Math.max(-840, Math.min(840, rawOffset)) : 0
+  const windowStart = new Date()
+  windowStart.setTime(windowStart.getTime() - offsetMin * 60000) // shift into the user's local frame
+  windowStart.setUTCHours(0, 0, 0, 0)                            // zero to local midnight
+  windowStart.setTime(windowStart.getTime() + offsetMin * 60000) // shift back to the real UTC instant
 
   const { count, error: countErr } = await supabase
     .from('interactions')
     .select('*', { count: 'exact', head: true })
     .eq('user_id', user.id)
     .ilike('model_used', `%${family}%`)
-    .gte('created_at', midnight.toISOString())
+    .gte('created_at', windowStart.toISOString())
 
   if (countErr) {
     // Fail closed — we'd rather reject than become an unmetered relay.

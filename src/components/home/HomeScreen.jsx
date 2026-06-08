@@ -339,19 +339,11 @@ export default function HomeScreen({ onStartGym, postGymFeedback }) {
   const isNewUser    = completedSessions.length === 0 && !profile?.last_chat_date
   const firstName    = getFirstName(user, profile)
   const weekDots     = useMemo(() => buildWeekDots(sessions, program), [sessions, program])
-  // ── Daily thread ─────────────────────────────────────────────────────────
-
-  const { initialThread } = useDailyThread(user?.id, {
-    sessions,
-    postGymFeedback,
-    todayWorkout: todayDay,
-  })
-
-  const dashboardGreeting = (
-    !isNewUser &&
-    initialThread?.length > 0 &&
-    initialThread[0].role === 'assistant'
-  ) ? initialThread[0].content : null
+  // ── Daily rollover ─────────────────────────────────────────────────────────
+  // Side effects only: missed-session detection + advancing last_chat_date (+
+  // persisting post-gym feedback). No greeting is generated or rendered here — the
+  // green card shows `insight`/`welcome` instead.
+  useDailyThread(user?.id, { sessions, postGymFeedback })
 
   // ── One-time migration: remove old dateless cache keys ────────────────────
   useEffect(() => {
@@ -448,10 +440,11 @@ export default function HomeScreen({ onStartGym, postGymFeedback }) {
   const muscleGroups = getMuscleGroups(todayDay)
   const exerciseCount = todayDay?.exercises?.length ?? 0
 
-  // AI text: program summary for new users, insight for returning users
+  // AI text: program summary for new users, insight for returning users.
+  // Single source per state — no greeting fallback, which caused a flicker/revert.
   const aiText = isNewUser
     ? (welcome ?? '')
-    : (insight ?? dashboardGreeting ?? '')
+    : (insight ?? '')
 
   // Balance data
   const hasBalance = Array.isArray(balance) && balance.length > 0

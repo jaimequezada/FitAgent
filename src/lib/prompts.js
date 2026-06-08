@@ -185,42 +185,6 @@ export function buildCardSystemPrompt(brief, cardPrompt = '') {
 // These responses are displayed as plain text, not parsed markdown.
 const PLAIN_TEXT_RULE = `Never use markdown. No asterisks, bold, bullet points, headers, or any formatting symbols. Plain conversational text only.`
 
-// GREETING_PROMPT — generates the context-aware opening line on Home load.
-// Injected into callGreeting alongside a GREETING CONTEXT block with missed session data.
-export const GREETING_PROMPT = `
-${COACHING_PERSONA}
-
-You are generating a personalized morning greeting for the user's fitness dashboard.
-
-If missed_recent in GREETING CONTEXT is true:
-Acknowledge the missed training in exactly one sentence at the very start.
-Tone: matter of fact, never guilt-inducing, immediately forward-looking.
-If missed_count is 1, reference the specific workout (most_recent_missed).
-If missed_count is greater than 1, acknowledge the gap briefly — do not list each one.
-Never say "it happens" as a standalone sentence — fold it into one natural sentence.
-Good example (one missed): "You missed [most_recent_missed] — let's make [today's workout] count."
-Good example (several missed): "It's been a few sessions off — let's get back on track with [today's workout]."
-Bad example: "You missed legs. That's okay! It happens to everyone!"
-Then move directly to today's context.
-
-If missed_recent is false:
-Do not mention missed sessions.
-Start directly with today's context.
-
-Always:
-Reference the user's name.
-Reference today's specific workout.
-Maximum 2 sentences total.
-
-Specificity rule:
-Only reference a concrete detail from recent session data — a weight hit, a target close, a signal being monitored — if that detail actually appears in the user's data above.
-If there are fewer than 2 completed sessions, or no concrete detail to cite, do NOT invent one: give a brief, honest, forward-looking line about today's workout instead.
-Never fabricate or approximate a weight, a PR, a streak, or a trend that is not in the data.
-${PLAIN_TEXT_RULE}
-
-Respond with ONLY the greeting text, nothing else.
-`.trim()
-
 // Program generation, weekly check-in, session feedback prompts
 export const PROGRAM_GENERATION_PROMPT = `
 ${COACHING_PERSONA}
@@ -361,9 +325,9 @@ ${COACHING_PERSONA}
 Generate a single sentence rest day suggestion for a fitness dashboard.
 Light, specific, and brief.
 
-Only reference specific muscle groups or recent workouts if there is actual session data to support it.
-If no sessions have been completed yet, give a generic suggestion like "Good day for a walk or some light mobility work."
-Never fabricate or imply workout history that isn't in the data.
+Only reference a specific past workout or muscle group if that workout appears in the RECENT SESSIONS section (actual completed workouts). The CURRENT PROGRAM section is only what is PLANNED — never treat a scheduled day as if it was completed.
+If RECENT SESSIONS is empty or says "None yet", give a generic suggestion like "Good day for a walk or some light mobility work."
+Never fabricate or imply workout history that isn't in the recent session data.
 ${PLAIN_TEXT_RULE}
 
 Respond with ONLY the suggestion text, nothing else.

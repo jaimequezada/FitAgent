@@ -9,7 +9,6 @@ import {
   buildSystemPrompt,
   buildCardSystemPrompt,
   ONBOARDING_PROMPT,
-  GREETING_PROMPT,
   SESSION_FEEDBACK_PROMPT,
   NEW_USER_WELCOME_PROMPT,
   PROGRAM_GENERATION_PROMPT,
@@ -67,33 +66,6 @@ export async function callClaude(message, userId, type = 'chat', history = [], o
 
 
   return extractAndSaveProgram(content, userId, onProgramSaved)
-}
-
-// callGreeting(userId, missedContext)
-// Generates a short context-aware greeting for the Home screen.
-// missedContext: { missed: bool, workoutName: string|null, todayWorkoutLabel: string|null }
-export async function callGreeting(userId, { missed = false, missedCount = 0, workoutName = null, todayWorkoutLabel = null } = {}) {
-  const brief  = await buildContextBrief(userId)
-  const model  = routeModel('chat')
-
-  const greetingContext = [
-    'GREETING CONTEXT:',
-    `missed_recent: ${missed}`,
-    missed ? `missed_count: ${missedCount}` : null,
-    missed && workoutName ? `most_recent_missed: ${workoutName}` : null,
-    `today_workout: ${todayWorkoutLabel ?? 'today\'s scheduled workout'}`,
-  ].filter(Boolean).join('\n')
-
-  const system = buildCardSystemPrompt(brief, GREETING_PROMPT + '\n\n' + greetingContext)
-
-  const { content } = await callApi({
-    messages: [{ role: 'user', content: 'Generate my greeting.' }],
-    system,
-    model,
-  })
-
-
-  return content
 }
 
 // callWelcome(userId)
@@ -280,7 +252,12 @@ export async function callOnboarding(messages, onChunk = null) {
   const { content } = await callApi({
     messages,
     system: ONBOARDING_PROMPT,
-    model: 'claude-sonnet-4-6',
+    // Haiku, not Sonnet: onboarding fires one call per turn, and the server caps
+    // Sonnet at 5/day. On Sonnet, a normal intake (~5 turns) exhausted the budget
+    // before callGenerateProgram could run, so new accounts got no program. Intake
+    // is a simple structured conversation Haiku handles well; this keeps the whole
+    // Sonnet budget available for program generation.
+    model: routeModel('chat'),
     onChunk,
   })
   return content
@@ -312,7 +289,9 @@ async function callApi({ messages, system, model, maxTokens, onChunk }) {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({ messages: payload, system, model, maxTokens }),
+    // Send the browser's UTC offset so the server can reset the daily usage cap at
+    // the user's LOCAL midnight, consistent with the rest of the app's local dates.
+    body: JSON.stringify({ messages: payload, system, model, maxTokens, tzOffsetMinutes: new Date().getTimezoneOffset() }),
   })
 
   if (!res.ok) {
