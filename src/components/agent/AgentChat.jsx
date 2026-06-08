@@ -6,6 +6,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAgent } from '../../hooks/useAgent'
+import { saveProgram } from '../../lib/claude'
 import AgentMessage from './AgentMessage'
 
 export default function AgentChat({ userId, initialThread = [], onThreadUpdate, onProgramSaved, suggestions = [] }) {
@@ -32,6 +33,27 @@ export default function AgentChat({ userId, initialThread = [], onThreadUpdate, 
     el.style.height = 'auto'
     el.style.height = `${Math.min(el.scrollHeight, 120)}px`
   }, [input])
+
+  // Check-in program proposal — apply (save program) or keep current. Both update
+  // the message's status in place and persist the thread.
+  async function handleCheckinApply(index) {
+    const target = messages[index]
+    const program = target?.checkin?.proposedProgram
+    if (!program) return
+    const ok = await saveProgram(userId, program)
+    const updated = messages.map((m, i) =>
+      i === index ? { ...m, checkin: { ...m.checkin, status: ok ? 'applied' : 'pending' } } : m)
+    reset(updated)
+    onThreadUpdate?.(updated)
+    if (ok) onProgramSaved?.()
+  }
+
+  function handleCheckinDismiss(index) {
+    const updated = messages.map((m, i) =>
+      i === index ? { ...m, checkin: { ...m.checkin, status: 'dismissed' } } : m)
+    reset(updated)
+    onThreadUpdate?.(updated)
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -64,6 +86,9 @@ export default function AgentChat({ userId, initialThread = [], onThreadUpdate, 
             role={msg.role}
             content={msg.content}
             streaming={msg.streaming}
+            checkin={msg.checkin}
+            onApply={() => handleCheckinApply(i)}
+            onDismiss={() => handleCheckinDismiss(i)}
           />
         ))}
 

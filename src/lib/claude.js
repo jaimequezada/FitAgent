@@ -4,10 +4,11 @@
 // ANTHROPIC_API_KEY is never exposed to the browser.
 
 import { supabase } from './supabase'
-import { buildContextBrief } from './memory'
+import { buildContextBrief, resolveSignals } from './memory'
 import {
   buildSystemPrompt,
   buildCardSystemPrompt,
+  buildWeeklyCheckinPrompt,
   ONBOARDING_PROMPT,
   SESSION_FEEDBACK_PROMPT,
   NEW_USER_WELCOME_PROMPT,
@@ -201,6 +202,64 @@ export async function callActivityAck(userId, activityType, durationMinutes = nu
   })
 
   return content
+}
+
+// callWeeklyCheckin(userId, { trialFinal })
+// Generates the weekly (or end-of-trial) coach check-in shown as a chat message.
+// Sonnet — it reviews a week of data and may propose a program change.
+// Returns { message, proposedProgram | null, resolvedSignals }.
+// Signals are resolved immediately; the program is NOT saved here — it's returned
+// as a proposal for the user to approve in the Agent (see saveProgram).
+export async function callWeeklyCheckin(userId, { trialFinal = false } = {}) {
+  const brief  = await buildContextBrief(userId)
+  const system = buildSystemPrompt(brief, buildWeeklyCheckinPrompt({ trialFinal }))
+  const model  = routeModel('checkin')
+
+  const { content } = await callApi({
+    messages: [{ role: 'user', content: 'Generate my check-in.' }],
+    system,
+    model,
+    maxTokens: 8192, // a proposed full program can exceed the 4096 default
+  })
+
+  // Optional proposed program — parsed but NOT saved (suggest-then-approve).
+  let proposedProgram = null
+  const programMatch = content.match(/<program_json>([\s\S]*?)<\/program_json>/)
+  if (programMatch) {
+    try { proposedProgram = JSON.parse(programMatch[1].trim()) }
+    catch (e) { console.warn('[callWeeklyCheckin] program proposal parse failed:', e.message) }
+  }
+
+  // Resolved signals — applied immediately.
+  let resolvedSignals = []
+  const checkinMatch = content.match(/<checkin_json>([\s\S]*?)<\/checkin_json>/)
+  if (checkinMatch) {
+    try {
+      const parsed = JSON.parse(checkinMatch[1].trim())
+      if (Array.isArray(parsed.resolved_signals)) resolvedSignals = parsed.resolved_signals
+    } catch (e) { console.warn('[callWeeklyCheckin] checkin_json parse failed:', e.message) }
+  }
+  if (resolvedSignals.length) {
+    try { await resolveSignals(userId, resolvedSignals) }
+    catch (e) { console.error('[callWeeklyCheckin] resolveSignals failed:', e) }
+  }
+
+  const message = content
+    .replace(/<program_json>[\s\S]*?<\/program_json>/, '')
+    .replace(/<checkin_json>[\s\S]*?<\/checkin_json>/, '')
+    .trim()
+
+  return { message, proposedProgram, resolvedSignals }
+}
+
+// saveProgram(userId, program) — persist an approved program to memory.current_program.
+// Used when the user accepts a check-in's proposed program change. Returns bool.
+export async function saveProgram(userId, program) {
+  const { error } = await supabase
+    .from('memory')
+    .upsert({ user_id: userId, current_program: program }, { onConflict: 'user_id' })
+  if (error) { console.error('[saveProgram] upsert failed:', error); return false }
+  return true
 }
 
 // callGenerateProgram(userId)

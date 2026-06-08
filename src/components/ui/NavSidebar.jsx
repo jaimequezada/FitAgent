@@ -1,4 +1,7 @@
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../../hooks/useAuth'
+import { loadTodayThread } from '../../lib/dailyThread'
 import PulsingOrb from './PulsingOrb'
 
 const HomeIcon = () => (
@@ -22,6 +25,19 @@ const navItems = [
 
 export default function NavSidebar() {
   const location = useLocation()
+  const { user } = useAuth()
+  // Dot on the Agent item when an un-acted check-in is waiting in today's thread
+  // (a pending program proposal, or an info check-in not yet viewed).
+  const [checkinWaiting, setCheckinWaiting] = useState(false)
+
+  useEffect(() => {
+    if (!user?.id) { setCheckinWaiting(false); return }
+    loadTodayThread(user.id).then(t => {
+      setCheckinWaiting(Boolean(
+        t?.some(m => m.checkin && (m.checkin.status === 'pending' || m.checkin.status === 'info'))
+      ))
+    })
+  }, [user?.id, location.pathname])
 
   return (
     <div style={{
@@ -67,6 +83,12 @@ export default function NavSidebar() {
           >
             {icon}
             {label}
+            {to === '/agent' && checkinWaiting && (
+              <span style={{
+                marginLeft: 'auto', width: 7, height: 7, borderRadius: '50%',
+                background: 'var(--green)', flexShrink: 0,
+              }} />
+            )}
           </Link>
         )
       })}

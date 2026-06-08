@@ -2,9 +2,10 @@
 // Dedicated /agent route — full-screen chat with FitAgent.
 // Always starts fresh with a "How can I help?" greeting each visit.
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useAuth } from '../../hooks/useAuth'
+import { loadTodayThread, upsertThread } from '../../lib/dailyThread'
 import NavSidebar from '../ui/NavSidebar'
 import PulsingOrb from '../ui/PulsingOrb'
 import AgentChat from './AgentChat'
@@ -23,6 +24,32 @@ const SUGGESTIONS = [
 export default function AgentPage() {
   const { user } = useAuth()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  // null = loading; Message[] once resolved. Seeded from today's daily thread so a
+  // weekly/end-of-trial check-in (written there by the daily rollover) shows up
+  // here; falls back to the generic greeting when there's no thread.
+  const [thread, setThread] = useState(null)
+
+  useEffect(() => {
+    if (!user?.id) return
+    let cancelled = false
+    loadTodayThread(user.id).then(saved => {
+      if (cancelled) return
+      if (saved && saved.length) {
+        // Mark info-only check-ins as seen so the nav badge clears after viewing.
+        // Pending program proposals stay 'pending' until the user acts on them.
+        let changed = false
+        const adjusted = saved.map(m => {
+          if (m.checkin?.status === 'info') { changed = true; return { ...m, checkin: { ...m.checkin, status: 'seen' } } }
+          return m
+        })
+        if (changed) upsertThread(user.id, adjusted)
+        setThread(adjusted)
+      } else {
+        setThread(INITIAL_THREAD)
+      }
+    })
+    return () => { cancelled = true }
+  }, [user?.id])
 
   return (
     <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', fontFamily: "'DM Sans', sans-serif" }}>
@@ -80,11 +107,14 @@ export default function AgentPage() {
 
         {/* CHAT COLUMN */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          <AgentChat
-            userId={user?.id}
-            initialThread={INITIAL_THREAD}
-            suggestions={SUGGESTIONS}
-          />
+          {thread !== null && (
+            <AgentChat
+              userId={user?.id}
+              initialThread={thread}
+              suggestions={SUGGESTIONS}
+              onThreadUpdate={msgs => upsertThread(user.id, msgs)}
+            />
+          )}
         </div>
 
       </div>

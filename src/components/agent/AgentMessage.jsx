@@ -121,7 +121,41 @@ function TypingDots() {
   )
 }
 
-export default function AgentMessage({ role, content, streaming }) {
+// Apply / Keep affordance shown under a check-in message that proposes a program change.
+function CheckinProposal({ checkin, onApply, onDismiss }) {
+  if (!checkin?.proposedProgram) return null
+  const { status } = checkin
+
+  if (status === 'applied') {
+    return <p className="mt-3 text-[12px]" style={{ color: '#4a9a30' }}>✓ Program updated</p>
+  }
+  if (status === 'dismissed') {
+    return <p className="mt-3 text-[12px]" style={{ color: 'var(--text-muted)' }}>Kept your current program</p>
+  }
+  // pending
+  return (
+    <div className="mt-3 flex gap-8" style={{ alignItems: 'center' }}>
+      <button
+        onClick={onApply}
+        style={{
+          fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 500,
+          background: 'var(--green)', color: '#000', border: 'none', borderRadius: 100,
+          padding: '7px 16px', cursor: 'pointer',
+        }}
+      >Apply changes</button>
+      <button
+        onClick={onDismiss}
+        style={{
+          fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 400,
+          background: 'transparent', color: 'var(--text-muted)', border: 'none',
+          cursor: 'pointer', textDecoration: 'underline', padding: '7px 0',
+        }}
+      >Keep as is</button>
+    </div>
+  )
+}
+
+export default function AgentMessage({ role, content, streaming, checkin, onApply, onDismiss }) {
   if (role === 'user') {
     return (
       <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
@@ -179,6 +213,7 @@ export default function AgentMessage({ role, content, streaming }) {
             {streaming && (
               <span className="inline-block w-[2px] h-3.5 bg-[var(--text-secondary)] ml-0.5 align-middle animate-pulse" />
             )}
+            <CheckinProposal checkin={checkin} onApply={onApply} onDismiss={onDismiss} />
           </>
         )}
       </div>

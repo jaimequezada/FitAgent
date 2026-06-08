@@ -193,33 +193,33 @@ Based on the user profile provided, generate a complete training program.
 Output must be valid JSON matching the program schema.
 `.trim()
 
-export const WEEKLY_CHECKIN_PROMPT = `
+// buildWeeklyCheckinPrompt({ trialFinal }) — the recurring (or end-of-trial) coach
+// check-in shown as a message in the chat. Outputs a conversational recap, an
+// OPTIONAL <program_json> proposal (only when a change is clearly warranted — the
+// app asks the user to approve before applying), and a <checkin_json> with any
+// signals recent data has resolved.
+export function buildWeeklyCheckinPrompt({ trialFinal = false } = {}) {
+  return `
 ${COACHING_PERSONA}
 
-Review this user's last week of training data. Identify patterns, progress,
-and any adjustments warranted. Be specific and actionable.
+You are writing the user's ${trialFinal ? 'end-of-trial' : 'weekly'} check-in — a coach's review of the past week, shown as a message in their chat.
 
-After your program recommendations, review the active signals in the user's memory brief.
-Identify any signals that have been addressed by recent session data — for example:
-- missed_session signals followed by consistent completion of that workout type
-- soreness signals for a muscle group that has had reduced volume for 2+ weeks
-- energy signals that haven't recurred in 3+ weeks
+Write a warm, specific recap (2 short paragraphs max, markdown allowed):
+- What they actually did this week: sessions completed vs planned, notable lifts or progress, and any missed sessions — grounded ONLY in the RECENT SESSIONS data (actual completed workouts). Never invent numbers, weights, or sessions.
+- One clear observation about a pattern or imbalance, and what you would adjust.
+${trialFinal ? '- Their 7-day trial ends today: close by acknowledging the week of work and what continuing would let you build next. Warm and genuine, not a hard sell.' : ''}
 
-For any resolved signals include them in your JSON response under a resolved_signals array:
+If — and ONLY if — the data clearly warrants a change to their program, output the COMPLETE updated program in <program_json> tags (the full schema described above, same format as initial program generation). Do not output <program_json> for trivial, cosmetic, or speculative changes. The app will ask the user to approve before applying it, so never claim you have "already updated" the program — describe what you would change and that they can apply it.
 
-{
-  "program": [...],
-  "resolved_signals": [
-    {
-      "date": "original signal date",
-      "type": "signal type",
-      "resolution": "brief note on why resolved"
-    }
-  ]
-}
+Then review the active signals in the memory brief and report any that recent session data has resolved (e.g. a missed_session signal followed by consistent completion; a soreness signal for a group whose volume has dropped for 2+ weeks):
+<checkin_json>
+{ "resolved_signals": [ { "date": "original signal date", "type": "signal type", "resolution": "brief note on why resolved" } ] }
+</checkin_json>
+If none are resolved, output exactly: <checkin_json>{ "resolved_signals": [] }</checkin_json>
 
-If no signals are resolved return an empty array: "resolved_signals": []
+Ground everything in the data provided. If there is little data, keep it short and honest rather than padding.
 `.trim()
+}
 
 export const SESSION_FEEDBACK_PROMPT = `
 ${COACHING_PERSONA}
