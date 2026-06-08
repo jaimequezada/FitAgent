@@ -607,14 +607,14 @@ export default function HomeScreen({ onStartGym, postGymFeedback }) {
               ) : todayState === 'rest' ? (
                 <>
                   <p style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Rest Day</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 300, marginBottom: 16, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 300, marginBottom: 16, lineHeight: 1.55 }}>
                     {restSuggestion ?? 'Recovery is part of the program.'}
                   </p>
                 </>
               ) : todayState === 'completed' ? (
                 <>
                   <p style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>Completed</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 300, marginBottom: 16, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 300, marginBottom: 16, lineHeight: 1.55 }}>
                     {workoutName} · {(todaySession?.exercises ?? []).map(ex => ex.name).join(', ') || `${exerciseCount} exercises`}
                   </p>
                   <div style={{ height: 2, background: 'var(--surface2)', borderRadius: 100, marginBottom: 16, overflow: 'hidden' }}>
@@ -624,7 +624,7 @@ export default function HomeScreen({ onStartGym, postGymFeedback }) {
               ) : (
                 <>
                   <p style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-primary)', marginBottom: 4 }}>{workoutName}</p>
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 300, marginBottom: 16 }}>
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary)', fontWeight: 300, marginBottom: 16 }}>
                     {muscleGroups ? `${muscleGroups} · ` : ''}{exerciseCount} exercises
                   </p>
                   <div style={{ height: 2, background: 'var(--surface2)', borderRadius: 100, marginBottom: 16, overflow: 'hidden' }}>
