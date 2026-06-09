@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { motion, useInView, AnimatePresence } from 'framer-motion'
 import PulsingOrb from '../ui/PulsingOrb'
+import { useAuth } from '../../hooks/useAuth'
 
 // ─── Typing animation hook ────────────────────────────────────────────────────
 const TYPING_MESSAGES = [
@@ -186,6 +187,7 @@ function MockupOrbHeader() {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function LandingPage() {
+  const { user } = useAuth()
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const typingHtml = useTypingAnimation()
@@ -223,10 +225,18 @@ export default function LandingPage() {
           ))}
         </ul>
         <div style={{ display: 'flex', alignItems: 'center', gap: 20 }} className="landing-nav-actions">
-          <Link to="/signin" style={{ fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none' }}>Sign in</Link>
-          <Link to="/signup" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, background: 'var(--green)', color: '#000', border: 'none', borderRadius: 100, padding: '10px 20px', cursor: 'pointer', textDecoration: 'none' }}>
-            Start for free
-          </Link>
+          {user ? (
+            <Link to="/home" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, background: 'var(--green)', color: '#000', border: 'none', borderRadius: 100, padding: '10px 20px', cursor: 'pointer', textDecoration: 'none' }}>
+              Go to dashboard
+            </Link>
+          ) : (
+            <>
+              <Link to="/signin" style={{ fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'none' }}>Sign in</Link>
+              <Link to="/signup" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, background: 'var(--green)', color: '#000', border: 'none', borderRadius: 100, padding: '10px 20px', cursor: 'pointer', textDecoration: 'none' }}>
+                Start for free
+              </Link>
+            </>
+          )}
         </div>
         <button
           onClick={() => setMenuOpen(v => !v)}
@@ -254,13 +264,13 @@ export default function LandingPage() {
               display: 'flex', flexDirection: 'column',
             }}
           >
-            {[['#how', 'How it works'], ['#features', 'Features'], ['#pricing', 'Pricing'], ['/signin', 'Sign in']].map(([href, label]) => (
+            {[['#how', 'How it works'], ['#features', 'Features'], ['#pricing', 'Pricing'], ...(user ? [] : [['/signin', 'Sign in']])].map(([href, label]) => (
               <a key={href} href={href} onClick={() => setMenuOpen(false)} style={{ fontSize: 16, color: 'var(--text-secondary)', textDecoration: 'none', padding: '14px 0', borderBottom: '1px solid var(--border)' }}>
                 {label}
               </a>
             ))}
-            <Link to="/signup" onClick={() => setMenuOpen(false)} style={{ marginTop: 20, textAlign: 'center', background: 'var(--green)', color: '#000', fontWeight: 500, borderRadius: 100, padding: 14, textDecoration: 'none', display: 'block' }}>
-              Start for free
+            <Link to={user ? '/home' : '/signup'} onClick={() => setMenuOpen(false)} style={{ marginTop: 20, textAlign: 'center', background: 'var(--green)', color: '#000', fontWeight: 500, borderRadius: 100, padding: 14, textDecoration: 'none', display: 'block' }}>
+              {user ? 'Go to dashboard' : 'Start for free'}
             </Link>
           </motion.div>
         )}
@@ -292,10 +302,18 @@ export default function LandingPage() {
         <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.65, duration: 0.7 }}
           style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 80 }}
         >
-          <Link to="/signup" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: 'var(--green)', color: '#000', border: 'none', borderRadius: 100, padding: '13px 28px', cursor: 'pointer', textDecoration: 'none' }}>
-            Start free — no credit card
-          </Link>
-          <Link to="/signin" style={{ fontSize: 14, color: 'var(--text-secondary)', textDecoration: 'none' }}>Sign in →</Link>
+          {user ? (
+            <Link to="/home" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: 'var(--green)', color: '#000', border: 'none', borderRadius: 100, padding: '13px 28px', cursor: 'pointer', textDecoration: 'none' }}>
+              Go to your dashboard →
+            </Link>
+          ) : (
+            <>
+              <Link to="/signup" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: 'var(--green)', color: '#000', border: 'none', borderRadius: 100, padding: '13px 28px', cursor: 'pointer', textDecoration: 'none' }}>
+                Start free — no credit card
+              </Link>
+              <Link to="/signin" style={{ fontSize: 14, color: 'var(--text-secondary)', textDecoration: 'none' }}>Sign in →</Link>
+            </>
+          )}
         </motion.div>
 
         {/* Hero AI card */}
@@ -538,11 +556,11 @@ export default function LandingPage() {
                       transition: 'opacity 0.2s, transform 0.2s',
                       opacity: plan.btnLabel === 'Coming Soon' ? 0.5 : 1,
                     }}
-                    onClick={() => { if (plan.btnLabel === 'Start for free') window.location.href = '/signup' }}
+                    onClick={() => { if (plan.btnLabel === 'Start for free') window.location.href = user ? '/home' : '/signup' }}
                     onMouseEnter={e => { if (plan.btnLabel !== 'Coming Soon') { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.transform = 'translateY(-1px)' } }}
                     onMouseLeave={e => { if (plan.btnLabel !== 'Coming Soon') { e.currentTarget.style.opacity = '1'; e.currentTarget.style.transform = 'none' } }}
                   >
-                    {plan.btnLabel}
+                    {user && plan.btnLabel === 'Start for free' ? 'Go to dashboard' : plan.btnLabel}
                   </button>
                 </motion.div>
               ))}
@@ -558,9 +576,11 @@ export default function LandingPage() {
             <h2 style={{ fontSize: 'clamp(36px, 5vw, 60px)', fontWeight: 300, letterSpacing: '-0.025em', color: 'var(--text-primary)', lineHeight: 1.1, marginBottom: 16 }}>
               Your program<br />is waiting.
             </h2>
-            <p style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 300, marginBottom: 36 }}>Start free. No credit card required. Cancel anytime.</p>
-            <Link to="/signup" style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: 'var(--green)', color: '#000', border: 'none', borderRadius: 100, padding: '14px 32px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
-              Start for free
+            <p style={{ fontSize: 15, color: 'var(--text-muted)', fontWeight: 300, marginBottom: 36 }}>
+              {user ? 'Pick up right where you left off.' : 'Start free. No credit card required. Cancel anytime.'}
+            </p>
+            <Link to={user ? '/home' : '/signup'} style={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500, background: 'var(--green)', color: '#000', border: 'none', borderRadius: 100, padding: '14px 32px', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }}>
+              {user ? 'Go to dashboard' : 'Start for free'}
             </Link>
           </div>
         </Reveal>
