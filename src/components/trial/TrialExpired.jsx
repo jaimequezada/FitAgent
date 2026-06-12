@@ -1,5 +1,9 @@
 import { supabase } from '../../lib/supabase'
 
+const CONTACT_MAILTO =
+  'mailto:jaimequezadajr@gmail.com?subject=' +
+  encodeURIComponent('FitAgent trial extension')
+
 export default function TrialExpired() {
   async function handleSignOut() {
     await supabase.auth.signOut()
@@ -19,21 +23,37 @@ export default function TrialExpired() {
         Your 7 days are up.
       </h1>
       <p style={{ fontSize: 15, color: 'var(--text-secondary)', fontWeight: 300, maxWidth: 340, marginBottom: 48, lineHeight: 1.6 }}>
-        Membership is coming soon. Check back shortly to continue your training.
+        Membership is coming soon. Enjoying the coaching and want to keep
+        training? Reach out and I will extend your trial.
       </p>
-      <button
-        onClick={handleSignOut}
-        style={{
-          fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500,
-          padding: '12px 28px', borderRadius: 12, cursor: 'pointer',
-          background: 'var(--surface2)', border: '1px solid var(--border2)',
-          color: 'var(--text-secondary)', transition: 'opacity 0.2s',
-        }}
-        onMouseEnter={e => { e.currentTarget.style.opacity = '0.7' }}
-        onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
-      >
-        Sign out
-      </button>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+        <a
+          href={CONTACT_MAILTO}
+          style={{
+            fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500,
+            padding: '12px 28px', borderRadius: 12, cursor: 'pointer',
+            background: 'var(--green)', border: 'none',
+            color: '#000', textDecoration: 'none', transition: 'opacity 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.7' }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+        >
+          Get in touch
+        </a>
+        <button
+          onClick={handleSignOut}
+          style={{
+            fontFamily: "'DM Sans', sans-serif", fontSize: 14, fontWeight: 500,
+            padding: '12px 28px', borderRadius: 12, cursor: 'pointer',
+            background: 'var(--surface2)', border: '1px solid var(--border2)',
+            color: 'var(--text-secondary)', transition: 'opacity 0.2s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '0.7' }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '1' }}
+        >
+          Sign out
+        </button>
+      </div>
     </div>
   )
 }

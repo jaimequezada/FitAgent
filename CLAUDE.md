@@ -41,7 +41,7 @@ and feels like a conversation not a form.
   `additional_activities` (jsonb), `workout_name`
 - `004` — profiles: added `name` column (text)
 - `005` — profiles: added `trial_started_at` (timestamptz)
-  for the 15-day free trial gate
+  for the 7-day free trial gate
 
 ## What To Never Do
 - Never hardcode fitness logic or rules
