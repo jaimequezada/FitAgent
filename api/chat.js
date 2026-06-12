@@ -25,6 +25,9 @@ const SUPABASE_ANON_KEY =
 const DAILY_LIMIT_HAIKU  = 20
 const DAILY_LIMIT_SONNET = 5
 
+// Trial window in days. Must match the client-side gate in src/App.jsx.
+const TRIAL_DAYS = 7
+
 // Hard ceiling on output tokens we'll ever allow a caller to request.
 const MAX_OUTPUT_TOKENS = 8192
 
@@ -66,6 +69,30 @@ export default async function handler(req, res) {
   const user = userData?.user
   if (userErr || !user) {
     return jsonError(res, 401, 'Invalid or expired session')
+  }
+
+  // ── 1b. Enforce the trial window (fails closed) ────────────────────────────
+  // The redirect in src/App.jsx is UX only; this check is the enforcement, so
+  // bypassing the client gate can't keep spending API tokens. A missing
+  // trial_started_at means the gate doesn't apply (same as the client). The
+  // 403 carries code 'trial_expired' so callApi can redirect gracefully.
+  const { data: profile, error: profileErr } = await supabase
+    .from('profiles')
+    .select('trial_started_at')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (profileErr) {
+    console.error('[api/chat] trial check failed:', profileErr.message)
+    return jsonError(res, 503, 'Trial check unavailable, try again shortly')
+  }
+
+  const trialStart = profile?.trial_started_at
+  if (trialStart) {
+    const daysSinceStart = (Date.now() - new Date(trialStart).getTime()) / (1000 * 60 * 60 * 24)
+    if (daysSinceStart > TRIAL_DAYS) {
+      return res.status(403).json({ error: 'Free trial expired', code: 'trial_expired' })
+    }
   }
 
   // ── 2. Enforce the daily cap (fails closed) ────────────────────────────────

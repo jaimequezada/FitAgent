@@ -355,6 +355,11 @@ async function callApi({ messages, system, model, maxTokens, onChunk }) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
+    // Server-side trial enforcement (api/chat.js). Send the user to the
+    // trial-expired screen instead of surfacing a raw error in the chat UI.
+    if (res.status === 403 && err.code === 'trial_expired') {
+      window.location.replace('/trial-expired')
+    }
     throw new Error(err.error || `API error ${res.status}`)
   }
 

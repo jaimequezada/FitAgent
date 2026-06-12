@@ -46,6 +46,8 @@ function AppRoutes() {
       .single()
       .then(({ data }) => {
         setOnboardingComplete(data?.onboarding_complete ?? false)
+        // UX gate only — enforcement lives server-side in api/chat.js
+        // (TRIAL_DAYS there must match the 7 here).
         const trialStart = data?.trial_started_at
         if (trialStart) {
           const daysSinceStart = (Date.now() - new Date(trialStart).getTime()) / (1000 * 60 * 60 * 24)
