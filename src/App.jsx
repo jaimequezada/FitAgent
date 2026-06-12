@@ -13,6 +13,9 @@ import HomeScreen from './components/home/HomeScreen'
 import GymMode from './components/gym/GymMode'
 import AgentPage from './components/agent/AgentPage'
 import TrialExpired from './components/trial/TrialExpired'
+import Privacy from './components/legal/Privacy'
+import Terms from './components/legal/Terms'
+import Support from './components/legal/Support'
 
 function AppRoutes() {
   const { user, isLoading: authLoading } = useAuth()
@@ -115,6 +118,10 @@ function AppRoutes() {
       } />
 
       <Route path="/trial-expired" element={<TrialExpired />} />
+
+      <Route path="/privacy" element={<Privacy />} />
+      <Route path="/terms" element={<Terms />} />
+      <Route path="/support" element={<Support />} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

@@ -590,8 +590,8 @@ export default function LandingPage() {
       <footer className="landing-footer" style={{ borderTop: '1px solid var(--border)', padding: '28px 48px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span style={{ fontSize: 11, fontWeight: 500, letterSpacing: '0.1em', color: 'var(--text-muted)' }}>FITAGENT</span>
         <div style={{ display: 'flex', gap: 28 }}>
-          {['Privacy Policy', 'Terms of Service', 'Contact'].map(label => (
-            <a key={label} href="#" style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
+          {[['Privacy Policy', '/privacy'], ['Terms of Service', '/terms'], ['Contact', '/support']].map(([label, href]) => (
+            <a key={label} href={href} style={{ fontSize: 12, color: 'var(--text-muted)', textDecoration: 'none', transition: 'color 0.2s' }}
               onMouseEnter={e => e.target.style.color = 'var(--text-secondary)'}
               onMouseLeave={e => e.target.style.color = 'var(--text-muted)'}
             >{label}</a>
