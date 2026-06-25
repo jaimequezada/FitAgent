@@ -43,6 +43,14 @@ and feels like a conversation not a form.
 - `005` — profiles: added `trial_started_at` (timestamptz)
   for the 7-day free trial gate
 
+### Account Deletion
+- Self-service account deletion shipped: `api/delete-account.js`
+  (server-side, service-role key) + type-email-to-confirm modal in
+  HomeScreen's profile menu. Hard delete via `auth.admin.deleteUser`;
+  the `on delete cascade` FKs wipe all user data — no migration needed.
+  Satisfies the deletion promise in the Privacy/Support pages. Requires
+  the `SUPABASE_SERVICE_ROLE_KEY` env var (server-only).
+
 ## What To Never Do
 - Never hardcode fitness logic or rules
 - Never use generic form-heavy UI patterns

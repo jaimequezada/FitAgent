@@ -42,3 +42,7 @@ pnpm-debug.log*
 
 # Design references
 design-refs/
+.vercel
+
+# Supabase CLI artifacts
+supabase/.temp/

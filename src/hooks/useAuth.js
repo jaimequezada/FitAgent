@@ -54,5 +54,39 @@ export function useAuth() {
     await supabase.auth.signOut()
   }
 
-  return { user, isLoading, error, signUp, signIn, signOut }
+  // Permanently deletes the account and all data via the server-side endpoint
+  // (the only place with the service-role key). On success we sign out locally
+  // so the auth-state listener drops the app back to the landing/auth screen.
+  async function deleteAccount() {
+    setError(null)
+    const { data: { session } } = await supabase.auth.getSession()
+    const accessToken = session?.access_token
+    if (!accessToken) {
+      const message = 'Not signed in'
+      setError(message)
+      return { error: message }
+    }
+
+    try {
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }))
+        const message = body.error || 'Failed to delete account'
+        setError(message)
+        return { error: message }
+      }
+    } catch (err) {
+      const message = err?.message || 'Failed to delete account'
+      setError(message)
+      return { error: message }
+    }
+
+    await supabase.auth.signOut()
+    return { error: null }
+  }
+
+  return { user, isLoading, error, signUp, signIn, signOut, deleteAccount }
 }

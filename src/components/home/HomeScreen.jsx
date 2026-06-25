@@ -293,10 +293,14 @@ function deriveBalanceCategories(program) {
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function HomeScreen({ onStartGym, postGymFeedback }) {
-  const { user, signOut } = useAuth()
+  const { user, signOut, deleteAccount } = useAuth()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
+  const [deletePending, setDeletePending] = useState(false)
+  const [deleteError, setDeleteError] = useState(null)
 
   // Raw data
   const [sessions,      setSessions]      = useState(null)
@@ -503,6 +507,14 @@ export default function HomeScreen({ onStartGym, postGymFeedback }) {
                     >
                       Sign out
                     </button>
+                    <button
+                      onClick={() => { setProfileOpen(false); setDeleteConfirmText(''); setDeleteError(null); setDeleteOpen(true) }}
+                      style={{ width: '100%', textAlign: 'left', padding: '10px 14px', background: 'none', border: 'none', borderTop: '1px solid var(--border)', fontSize: 13, color: '#e5484d', cursor: 'pointer' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--surface2)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                    >
+                      Delete account
+                    </button>
                   </motion.div>
                 </>
               )}
@@ -537,6 +549,92 @@ export default function HomeScreen({ onStartGym, postGymFeedback }) {
                 {label}
               </a>
             ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Delete-account confirmation */}
+      <AnimatePresence>
+        {deleteOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed', inset: 0, zIndex: 200,
+              background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+            }}
+            onClick={() => { if (!deletePending) setDeleteOpen(false) }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 8, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 8, scale: 0.97 }}
+              transition={{ duration: 0.15 }}
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: '100%', maxWidth: 380, background: 'var(--surface)',
+                border: '1px solid var(--border)', borderRadius: 16, padding: 24,
+              }}
+            >
+              <h2 style={{ fontSize: 18, fontWeight: 500, color: 'var(--text-primary)', margin: '0 0 8px' }}>Delete account?</h2>
+              <p style={{ fontSize: 13, lineHeight: 1.5, color: 'var(--text-secondary)', margin: '0 0 16px' }}>
+                This permanently erases your program, sessions, and chat history. This cannot be undone.
+              </p>
+              <label style={{ display: 'block', fontSize: 12, color: 'var(--text-muted)', margin: '0 0 6px' }}>
+                Type <strong style={{ color: 'var(--text-secondary)' }}>{user?.email}</strong> to confirm
+              </label>
+              <input
+                type="email"
+                value={deleteConfirmText}
+                onChange={e => setDeleteConfirmText(e.target.value)}
+                disabled={deletePending}
+                autoComplete="off"
+                style={{
+                  width: '100%', boxSizing: 'border-box', padding: '10px 12px', fontSize: 14,
+                  background: 'var(--surface2)', border: '1px solid var(--border2)',
+                  borderRadius: 10, color: 'var(--text-primary)', outline: 'none',
+                }}
+              />
+              {deleteError && (
+                <p style={{ fontSize: 12, color: '#e5484d', margin: '10px 0 0' }}>{deleteError}</p>
+              )}
+              <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <button
+                  onClick={() => { if (!deletePending) setDeleteOpen(false) }}
+                  disabled={deletePending}
+                  style={{
+                    flex: 1, padding: '10px 14px', fontSize: 13, borderRadius: 10,
+                    background: 'var(--surface2)', border: '1px solid var(--border2)',
+                    color: 'var(--text-primary)', cursor: deletePending ? 'default' : 'pointer',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    setDeletePending(true)
+                    setDeleteError(null)
+                    const { error } = await deleteAccount()
+                    if (error) {
+                      setDeleteError(error)
+                      setDeletePending(false)
+                    }
+                    // On success the auth listener unmounts this screen — no cleanup needed.
+                  }}
+                  disabled={deletePending || deleteConfirmText.trim().toLowerCase() !== (user?.email ?? '').toLowerCase()}
+                  style={{
+                    flex: 1, padding: '10px 14px', fontSize: 13, fontWeight: 500, borderRadius: 10,
+                    background: '#e5484d', border: '1px solid #e5484d', color: '#fff',
+                    opacity: (deletePending || deleteConfirmText.trim().toLowerCase() !== (user?.email ?? '').toLowerCase()) ? 0.45 : 1,
+                    cursor: (deletePending || deleteConfirmText.trim().toLowerCase() !== (user?.email ?? '').toLowerCase()) ? 'default' : 'pointer',
+                  }}
+                >
+                  {deletePending ? 'Deleting…' : 'Delete account'}
+                </button>
+              </div>
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
