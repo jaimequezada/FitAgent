@@ -1,6 +1,6 @@
 # Phase: Self-Service Account Deletion
 
-**Status:** Done (pending Vercel env var + end-to-end test)
+**Status:** Done — verified in production 2026-06-25 (test account deleted, cascade confirmed: profiles/sessions/daily_threads/interactions all clean, zero orphans)
 **Owner:** —
 **Started:** 2026-06-24
 
