@@ -2,7 +2,7 @@
 
 A PWA fitness coaching agent powered by Claude AI. Not a traditional fitness app — an intelligent coach that remembers your training history, adapts your program over time, and feels like a conversation with a knowledgeable coach, not a form to fill out.
 
-**Live demo:** [fit-agent-zeta.vercel.app](https://fit-agent-zeta.vercel.app)
+**Live demo:** [fitagent.jaimequezada.com](https://fitagent.jaimequezada.com)
 
 ---
 

@@ -13,7 +13,7 @@ The UI is a thin shell.** There is no hardcoded fitness logic anywhere in the
 codebase — every coaching decision is reasoned by Claude from injected user
 context.
 
-Live demo: https://fit-agent-zeta.vercel.app
+Live demo: https://fitagent.jaimequezada.com
 
 ### Target user
 Intermediate gym-goer (6–18 months experience), training 3–5×/week, hitting
